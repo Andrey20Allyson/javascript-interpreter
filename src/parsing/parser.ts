@@ -1,61 +1,12 @@
-const lexer = require("./lexer");
-const { Token } = lexer;
-
-function createSyntaxNodeFactory(type, ...valueKeys) {
-  function factory(...args) {
-    const token = {
-      type,
-      factory,
-      isA(factory) {
-        return token.factory === factory;
-      },
-    };
-
-    for (let i = 0; i < valueKeys.length; i++) {
-      token[valueKeys[i]] = args[i];
-    }
-
-    return token;
-  }
-
-  return factory;
-}
+import { SyntaxNode } from "./syntax-node";
+import { Token } from "./token";
 
 function Range(start = 0, end = -1) {
   return { start, end };
 }
 
-const SyntaxNode = {
-  NodeList: createSyntaxNodeFactory("NodeList", "nodes"),
-  Identifier: createSyntaxNodeFactory("Identifier", "name"),
-  PropertyDeref: createSyntaxNodeFactory(
-    "Property Deref",
-    "identifier",
-    "property"
-  ),
-  MethodCall: createSyntaxNodeFactory(
-    "Method Call",
-    "identifier",
-    "methodIdentifier",
-    "params"
-  ),
-  FunctionCall: createSyntaxNodeFactory(
-    "Function Call",
-    "identifier",
-    "params"
-  ),
-  StrLiteral: createSyntaxNodeFactory("String Literal", "value"),
-  NumbLiteral: createSyntaxNodeFactory("Number Literal", "value"),
-  BinaryOperation: createSyntaxNodeFactory(
-    "Binary Operation",
-    "opr",
-    "leftExpr",
-    "rightExpr"
-  ),
-};
-
-function parse(tokens, range = Range()) {
-  const tree = SyntaxNode.NodeList([]);
+function parse(tokens: Token[], range = Range()): SyntaxNode.NodeList {
+  const tree = new SyntaxNode.NodeList([]);
   let lastNode = null;
 
   const start = range.start;
@@ -70,12 +21,14 @@ function parse(tokens, range = Range()) {
   for (let i = start; i < end; i++) {
     const token = tokens[i];
 
-    if (token.isA(Token.Identifier)) {
-      const nextToken = tokens[i + 1];
+    if (token instanceof Token.Identifier) {
+      const nextToken: Token | undefined = tokens[i + 1];
 
-      if (nextToken != null && nextToken.isA(Token.Dot)) {
+      nextToken;
+
+      if (nextToken != null && nextToken instanceof Token.Dot) {
         const propertyKeyToken = tokens[i + 2];
-        if (!propertyKeyToken.isA(Token.Identifier)) {
+        if (!(propertyKeyToken instanceof Token.Identifier)) {
           throw new Error("parsing error");
         }
 
@@ -83,11 +36,11 @@ function parse(tokens, range = Range()) {
 
         if (
           tokenAfterPropertyKey == null ||
-          !tokenAfterPropertyKey.isA(Token.OpenParentheses)
+          !(tokenAfterPropertyKey instanceof Token.OpenParentheses)
         ) {
           const expressionRange = seekExpressionRange(tokens, i + 2);
-          lastNode = SyntaxNode.PropertyDeref(
-            SyntaxNode.Identifier(token.name),
+          lastNode = new SyntaxNode.PropertyDeref(
+            new SyntaxNode.Identifier(token.name),
             parse(tokens, expressionRange)
           );
 
@@ -105,9 +58,9 @@ function parse(tokens, range = Range()) {
           params.push(node);
         }
 
-        lastNode = SyntaxNode.MethodCall(
-          SyntaxNode.Identifier(token.name),
-          SyntaxNode.Identifier(propertyKeyToken.name),
+        lastNode = new SyntaxNode.MethodCall(
+          new SyntaxNode.Identifier(token.name),
+          new SyntaxNode.Identifier(propertyKeyToken.name),
           params
         );
 
@@ -116,7 +69,9 @@ function parse(tokens, range = Range()) {
         continue;
       }
 
-      if (nextToken != null && nextToken.isA(Token.OpenParentheses)) {
+      nextToken;
+
+      if (nextToken != null && nextToken instanceof Token.OpenParentheses) {
         let params = [];
         const seekParamsResult = seekParams(tokens, i + 1);
 
@@ -126,8 +81,8 @@ function parse(tokens, range = Range()) {
           params.push(node);
         }
 
-        lastNode = SyntaxNode.FunctionCall(
-          SyntaxNode.Identifier(token.name),
+        lastNode = new SyntaxNode.FunctionCall(
+          new SyntaxNode.Identifier(token.name),
           params
         );
 
@@ -136,30 +91,30 @@ function parse(tokens, range = Range()) {
         continue;
       }
 
-      lastNode = SyntaxNode.Identifier(token.name);
+      lastNode = new SyntaxNode.Identifier(token.name);
       tree.nodes.push(lastNode);
       continue;
     }
 
-    if (token.isA(Token.Str)) {
-      lastNode = SyntaxNode.StrLiteral(token.text.slice(1, -1));
+    if (token instanceof Token.Str) {
+      lastNode = new SyntaxNode.StrLiteral(token.text.slice(1, -1));
       tree.nodes.push(lastNode);
       continue;
     }
 
-    if (token.isA(Token.Numb)) {
+    if (token instanceof Token.Numb) {
       const num = parseNumber(token.text);
-      lastNode = SyntaxNode.NumbLiteral(num);
+      lastNode = new SyntaxNode.NumbLiteral(num);
       tree.nodes.push(lastNode);
       continue;
     }
 
-    if (token.isA(Token.Operator)) {
-      const leftExpr = tree.nodes.pop();
+    if (token instanceof Token.Operator) {
+      const leftExpr = tree.nodes.pop()!;
       const rightExprRange = seekExpressionRange(tokens, i + 1);
       const rightExpr = parse(tokens, rightExprRange);
 
-      lastNode = SyntaxNode.BinaryOperation("+", leftExpr, rightExpr);
+      lastNode = new SyntaxNode.BinaryOperation("+", leftExpr, rightExpr);
 
       tree.nodes.push(lastNode);
       i = rightExprRange.end - 1;
@@ -170,7 +125,7 @@ function parse(tokens, range = Range()) {
   return tree;
 }
 
-function seekParams(tokens, offset) {
+function seekParams(tokens: Token[], offset: number) {
   let opened = 1;
   let i = offset + 1;
   let paramStart = i;
@@ -183,12 +138,12 @@ function seekParams(tokens, offset) {
       throw new Error("parsing error");
     }
 
-    if (token.isA(Token.OpenParentheses)) {
+    if (token instanceof Token.OpenParentheses) {
       opened++;
       continue;
     }
 
-    if (token.isA(Token.CloseParentheses)) {
+    if (token instanceof Token.CloseParentheses) {
       opened--;
 
       if (opened === 0) {
@@ -200,7 +155,7 @@ function seekParams(tokens, offset) {
       continue;
     }
 
-    if (opened === 1 && token.isA(Token.Colon)) {
+    if (opened === 1 && token instanceof Token.Colon) {
       ranges.push(Range(paramStart, i - 1));
       paramStart = i;
       continue;
@@ -210,7 +165,7 @@ function seekParams(tokens, offset) {
   return { ranges, end: i };
 }
 
-function seekExpressionRange(tokens, offset) {
+function seekExpressionRange(tokens: Token[], offset: number) {
   const start = offset;
   let openedParen = 0;
 
@@ -220,19 +175,19 @@ function seekExpressionRange(tokens, offset) {
       return Range(start, offset);
     }
 
-    if (token.isA(Token.Semicolon) || token.isA(Token.Colon)) {
+    if (token instanceof Token.Semicolon || token instanceof Token.Colon) {
       return Range(start, offset);
     }
 
-    if (token.isA(Token.Operator)) {
+    if (token instanceof Token.Operator) {
       return Range(start, offset - 1);
     }
 
-    if (token.isA(Token.OpenParentheses)) {
+    if (token instanceof Token.OpenParentheses) {
       openedParen++;
     }
 
-    if (token.isA(Token.CloseParentheses)) {
+    if (token instanceof Token.CloseParentheses) {
       openedParen--;
       if (openedParen < 0) {
         return Range(start, offset - 1);
@@ -241,7 +196,7 @@ function seekExpressionRange(tokens, offset) {
   }
 }
 
-function parseNumber(text) {
+function parseNumber(text: string) {
   const zeroCharCode = "0".charCodeAt(0);
   let num = 0;
 
@@ -263,4 +218,4 @@ const parser = {
   parse,
 };
 
-module.exports = parser;
+export default parser;

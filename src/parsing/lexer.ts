@@ -1,77 +1,57 @@
-function createTokenFactory(type, ...valueKeys) {
-  function factory(...args) {
-    const token = {
-      type,
-      factory,
-      isA(factory) {
-        return token.factory === factory;
-      },
-    };
+import { Token } from "./token";
 
-    for (let i = 0; i < valueKeys.length; i++) {
-      token[valueKeys[i]] = args[i];
-    }
-
-    return token;
-  }
-
-  return factory;
-}
-
-const Token = {
-  Identifier: createTokenFactory("Identifier", "name"),
-  Keyword: createTokenFactory("Keyword", "name"),
-  Numb: createTokenFactory("Number", "text"),
-  Str: createTokenFactory("String", "text"),
-  OpenParentheses: createTokenFactory("Open Parentheses"),
-  CloseParentheses: createTokenFactory("Close Parentheses"),
-  Dot: createTokenFactory("Dot"),
-  Semicolon: createTokenFactory("Semicolon"),
-  Colon: createTokenFactory("Colon"),
-  Operator: createTokenFactory("Operator", "opr"),
-};
-
-function tokenize(code) {
-  let tokens = [];
+function tokenize(code: string) {
+  let tokens: Token[] = [];
 
   let i = 0;
   do {
     const char = code[i];
 
+    if (char === "/") {
+      const nextChar = code[i + 1];
+      if (nextChar === "/") {
+        tokens.push(new Token.LineCommentary());
+
+        i = seekEndlineIndex(code, i);
+
+        continue;
+      }
+    }
+
     if (char === "(") {
-      tokens.push(Token.OpenParentheses());
+      tokens.push(new Token.OpenParentheses());
       continue;
     }
 
     if (char === ")") {
-      tokens.push(Token.CloseParentheses());
+      tokens.push(new Token.CloseParentheses());
       continue;
     }
 
     if (char === ".") {
-      tokens.push(Token.Dot());
+      tokens.push(new Token.Dot());
       continue;
     }
 
     if (char === ";") {
-      tokens.push(Token.Semicolon());
+      tokens.push(new Token.Semicolon());
       continue;
     }
 
     if (char === ",") {
-      tokens.push(Token.Colon());
+      tokens.push(new Token.Colon());
       continue;
     }
 
     if (char === "+") {
-      tokens.push(Token.Operator("+"));
+      tokens.push(new Token.Operator("+"));
       continue;
     }
 
     if (char === '"') {
       const text = seekString(code, i);
 
-      tokens.push(Token.Str(text));
+      tokens.push(new Token.Str(text));
       i += text.length - 1;
 
       continue;
@@ -80,7 +60,7 @@ function tokenize(code) {
     if (isNumeric(char)) {
       const text = seekNumber(code, i);
 
-      tokens.push(Token.Numb(text));
+      tokens.push(new Token.Numb(text));
       i += text.length - 1;
 
       continue;
@@ -89,7 +69,7 @@ function tokenize(code) {
     if (isAlphabet(char)) {
       const word = seekWord(code, i);
 
-      tokens.push(Token.Identifier(word));
+      tokens.push(new Token.Identifier(word));
       i += word.length - 1;
 
       continue;
@@ -99,19 +79,19 @@ function tokenize(code) {
   return tokens;
 }
 
-function isAlphabet(char) {
+function isAlphabet(char: string) {
   return (char >= "a" && char <= "z") || (char >= "A" && char <= "Z");
 }
 
-function isAlphanum(char) {
+function isAlphanum(char: string) {
   return isAlphabet(char) || isNumeric(char);
 }
 
-function isNumeric(char) {
+function isNumeric(char: string) {
   return char >= "0" && char <= "9";
 }
 
-function seekWord(code, offset) {
+function seekWord(code: string, offset: number) {
   let text = "";
 
   while (true) {
@@ -127,7 +107,7 @@ function seekWord(code, offset) {
   return text;
 }
 
-function seekString(code, offset) {
+function seekString(code: string, offset: number) {
   let text = "";
 
   let delimiter = 0;
@@ -149,7 +129,7 @@ function seekString(code, offset) {
   return text;
 }
 
-function seekNumber(code, offset) {
+function seekNumber(code: string, offset: number) {
   let text = "";
 
   while (true) {
@@ -165,9 +145,23 @@ function seekNumber(code, offset) {
   return text;
 }
 
+function seekEndlineIndex(code: string, offset: number) {
+  while (true) {
+    const char = code[offset++];
+
+    if (char == null) {
+      return offset - 1;
+    }
+
+    if (char === "\n") {
+      return offset - 1;
+    }
+  }
+}
+
 const lexer = {
   tokenize,
   Token,
 };
 
-module.exports = lexer;
+export default lexer;
