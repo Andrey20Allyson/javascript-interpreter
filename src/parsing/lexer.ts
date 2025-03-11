@@ -12,8 +12,12 @@ namespace lexer {
 
       new TokenAnalyser.LineCommentaryAnalyser(code),
 
+      new TokenAnalyser.OpenBracesAnalyser(code),
+      new TokenAnalyser.CloseBracesAnalyser(code),
+
       new TokenAnalyser.OpenParenthesesAnalyser(code),
       new TokenAnalyser.CloseParenthesesAnalyser(code),
+
       new TokenAnalyser.DotAnalyser(code),
       new TokenAnalyser.SemicolonAnalyser(code),
       new TokenAnalyser.ColonAnalyser(code),
@@ -23,6 +27,7 @@ namespace lexer {
       new TokenAnalyser.StrAnalyser(code),
       new TokenAnalyser.NumbAnalyser(code),
 
+      new TokenAnalyser.KeywordAnalyser(code),
       new TokenAnalyser.IdentifierAnalyser(code),
     ];
 

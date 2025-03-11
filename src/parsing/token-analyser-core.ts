@@ -1,13 +1,19 @@
 import { Token } from "./token";
 
-export type TokenConstructor = new (text: string) => Token;
+export interface TokenConstructor<T extends Token = Token> {
+  new (text: string): T;
+  getType(): string;
+}
 export interface TokenGenerator {
   offset: number;
+  lastToken: Token | null;
   next(): Token | null;
 }
 
 export abstract class TokenAnalyser implements TokenGenerator {
   protected abstract readonly TokenConstructor: TokenConstructor;
+  lastToken: Token.TokenBase | null = null;
+
   constructor(readonly code: string, public offset: number = 0) {}
 
   abstract getMatch(): string | null;
@@ -22,7 +28,9 @@ export abstract class TokenAnalyser implements TokenGenerator {
 
     this.offset += matchString.length;
 
-    return new this.TokenConstructor(matchString);
+    this.lastToken = new this.TokenConstructor(matchString);
+
+    return this.lastToken;
   }
 }
 
@@ -61,6 +69,7 @@ export abstract class PolyTokenAnalyser extends SimpleTokenAnalyser {
 
 export class TokenAnalyserCollection implements TokenGenerator {
   private collection: TokenGenerator[] = [];
+  lastToken: Token.TokenBase | null = null;
 
   constructor(public offset: number = 0) {}
 
@@ -70,6 +79,7 @@ export class TokenAnalyserCollection implements TokenGenerator {
 
   next(): Token | null {
     for (const generator of this.collection) {
+      generator.lastToken = this.lastToken;
       generator.offset = this.offset;
 
       const token = generator.next();
@@ -78,6 +88,7 @@ export class TokenAnalyserCollection implements TokenGenerator {
       }
 
       this.offset = generator.offset;
+      this.lastToken = token;
 
       return token;
     }

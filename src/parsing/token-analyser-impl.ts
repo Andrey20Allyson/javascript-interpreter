@@ -35,6 +35,16 @@ export namespace TokenAnalyser {
     }
   }
 
+  export class OpenBracesAnalyser extends SimpleTokenAnalyser {
+    protected TokenConstructor: TokenConstructor = Token.OpenBraces;
+    protected searchString: string = "{";
+  }
+
+  export class CloseBracesAnalyser extends SimpleTokenAnalyser {
+    protected TokenConstructor: TokenConstructor = Token.CloseBraces;
+    protected searchString: string = "}";
+  }
+
   export class OpenParenthesesAnalyser extends SimpleTokenAnalyser {
     protected searchString: string = "(";
     protected TokenConstructor: TokenConstructor = Token.OpenParentheses;
@@ -88,6 +98,19 @@ export namespace TokenAnalyser {
       }
 
       return text;
+    }
+  }
+
+  export class KeywordAnalyser extends PolyTokenAnalyser {
+    protected TokenConstructor: TokenConstructor = Token.Keyword;
+    protected searchStrings: string[] = ["function", "if", "return"];
+
+    getMatch(): string | null {
+      if (this.lastToken instanceof Token.Dot) {
+        return null;
+      }
+
+      return super.getMatch();
     }
   }
 

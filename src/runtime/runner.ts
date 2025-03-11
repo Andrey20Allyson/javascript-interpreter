@@ -60,6 +60,16 @@ function run(node: SyntaxNode, scopes = [globalScope]): any {
       return leftValue + rightValue;
     }
   }
+
+  if (node instanceof SyntaxNode.FunctionDefinition) {
+    const scope = scopes.at(-1)!;
+
+    scope[node.identifier.name] = function () {
+      const functionScope: Scope = {};
+
+      return run(node.body, [...scopes, functionScope]);
+    };
+  }
 }
 
 function findInScopes(scopes: Scope[], identifier: SyntaxNode.Identifier) {

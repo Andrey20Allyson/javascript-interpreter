@@ -4,7 +4,11 @@ export namespace Token {
     readonly type: string;
 
     constructor() {
-      this.type = this.constructor.name;
+      this.type = (this.constructor as typeof TokenBase).getType();
+    }
+
+    static getType(): string {
+      return this.name;
     }
   }
 
@@ -15,7 +19,7 @@ export namespace Token {
   }
 
   export class Keyword extends TokenBase {
-    constructor(readonly name: string) {
+    constructor(readonly keyword: string) {
       super();
     }
   }
@@ -75,4 +79,6 @@ export namespace Token {
   }
 
   export class EndOfFile extends TokenBase {}
+  export class OpenBraces extends TokenBase {}
+  export class CloseBraces extends TokenBase {}
 }
