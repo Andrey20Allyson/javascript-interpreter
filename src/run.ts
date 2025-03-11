@@ -3,6 +3,7 @@ import path from "node:path";
 import lexer from "@parsing/lexer";
 import parser from "@parsing/parser";
 import runner from "@runtime/runner";
+import { TokenAnalyser } from "@parsing/token-analyser-impl";
 
 function evaluate(code: string) {
   const tokens = lexer.tokenize(code);

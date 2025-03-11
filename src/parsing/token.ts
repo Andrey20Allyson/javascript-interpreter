@@ -73,4 +73,6 @@ export namespace Token {
       super();
     }
   }
+
+  export class EndOfFile extends TokenBase {}
 }

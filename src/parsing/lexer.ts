@@ -1,167 +1,57 @@
 import { Token } from "./token";
+import {
+  TokenAnalyser,
+  TokenAnalyserCollection,
+  TokenGenerator,
+} from "./token-analyser-impl";
 
-function tokenize(code: string) {
-  let tokens: Token[] = [];
+namespace lexer {
+  export function createTokenGenerator(code: string): TokenGenerator {
+    const generators: TokenGenerator[] = [
+      new TokenAnalyser.EndOfFileAnalyser(code),
 
-  let i = 0;
-  do {
-    const char = code[i];
+      new TokenAnalyser.LineCommentaryAnalyser(code),
 
-    if (char === "/") {
-      const nextChar = code[i + 1];
-      if (nextChar === "/") {
-        tokens.push(new Token.LineCommentary());
+      new TokenAnalyser.OpenParenthesesAnalyser(code),
+      new TokenAnalyser.CloseParenthesesAnalyser(code),
+      new TokenAnalyser.DotAnalyser(code),
+      new TokenAnalyser.SemicolonAnalyser(code),
+      new TokenAnalyser.ColonAnalyser(code),
 
-        i = seekEndlineIndex(code, i);
+      new TokenAnalyser.OperatorAnalyser(code),
 
+      new TokenAnalyser.StrAnalyser(code),
+      new TokenAnalyser.NumbAnalyser(code),
+
+      new TokenAnalyser.IdentifierAnalyser(code),
+    ];
+
+    const generator = new TokenAnalyserCollection();
+    generator.setCollection(generators);
+
+    return generator;
+  }
+
+  export function tokenize(code: string) {
+    let tokens: Token[] = [];
+
+    const generator = createTokenGenerator(code);
+
+    while (true) {
+      const token = generator.next();
+      if (token == null) {
         continue;
       }
+
+      if (token instanceof Token.EndOfFile) {
+        break;
+      }
+
+      tokens.push(token);
     }
 
-    if (char === "(") {
-      tokens.push(new Token.OpenParentheses());
-      continue;
-    }
-
-    if (char === ")") {
-      tokens.push(new Token.CloseParentheses());
-      continue;
-    }
-
-    if (char === ".") {
-      tokens.push(new Token.Dot());
-      continue;
-    }
-
-    if (char === ";") {
-      tokens.push(new Token.Semicolon());
-      continue;
-    }
-
-    if (char === ",") {
-      tokens.push(new Token.Colon());
-      continue;
-    }
-
-    if (char === "+") {
-      tokens.push(new Token.Operator("+"));
-      continue;
-    }
-
-    if (char === '"') {
-      const text = seekString(code, i);
-
-      tokens.push(new Token.Str(text));
-      i += text.length - 1;
-
-      continue;
-    }
-
-    if (isNumeric(char)) {
-      const text = seekNumber(code, i);
-
-      tokens.push(new Token.Numb(text));
-      i += text.length - 1;
-
-      continue;
-    }
-
-    if (isAlphabet(char)) {
-      const word = seekWord(code, i);
-
-      tokens.push(new Token.Identifier(word));
-      i += word.length - 1;
-
-      continue;
-    }
-  } while (++i < code.length);
-
-  return tokens;
-}
-
-function isAlphabet(char: string) {
-  return (char >= "a" && char <= "z") || (char >= "A" && char <= "Z");
-}
-
-function isAlphanum(char: string) {
-  return isAlphabet(char) || isNumeric(char);
-}
-
-function isNumeric(char: string) {
-  return char >= "0" && char <= "9";
-}
-
-function seekWord(code: string, offset: number) {
-  let text = "";
-
-  while (true) {
-    const char = code[offset++];
-
-    if (!isAlphanum(char)) {
-      break;
-    }
-
-    text += char;
-  }
-
-  return text;
-}
-
-function seekString(code: string, offset: number) {
-  let text = "";
-
-  let delimiter = 0;
-
-  while (true) {
-    const char = code[offset++];
-
-    if (char === '"') {
-      delimiter++;
-    }
-
-    text += char;
-
-    if (delimiter === 2) {
-      break;
-    }
-  }
-
-  return text;
-}
-
-function seekNumber(code: string, offset: number) {
-  let text = "";
-
-  while (true) {
-    const char = code[offset++];
-
-    if (!isNumeric(char)) {
-      break;
-    }
-
-    text += char;
-  }
-
-  return text;
-}
-
-function seekEndlineIndex(code: string, offset: number) {
-  while (true) {
-    const char = code[offset++];
-
-    if (char == null) {
-      return offset - 1;
-    }
-
-    if (char === "\n") {
-      return offset - 1;
-    }
+    return tokens;
   }
 }
-
-const lexer = {
-  tokenize,
-  Token,
-};
 
 export default lexer;
