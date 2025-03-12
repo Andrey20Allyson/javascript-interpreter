@@ -10,7 +10,7 @@ function evaluate(code: string) {
 
   const tree = parser.parse(tokens);
   // console.log(JSON.stringify(tree, undefined, 2));
-  const result = runner.run(tree);
+  const result = runner.run(tree).value;
 
   return result;
 }
@@ -25,7 +25,7 @@ async function main(args: string[]) {
   const result = evaluate(code);
 
   console.log(result);
-  console.log(`\n>> execution finished`);
+  console.log(`>> execution finished`);
   console.timeEnd("runtime");
 }
 

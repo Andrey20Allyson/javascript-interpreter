@@ -1,12 +1,9 @@
-function test() {
-  function test2() {
-    console.log("hello world");
+function a() {
+  console.log("olá mundo")
 
-    return 1;
-    return 0;
-  }
+  return 5 + 5
 
-  return test2();
+  return 0;
 }
 
-test();
+return a() + a();

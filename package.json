@@ -3,7 +3,7 @@
   "version": "1.0.0",
   "main": "compiler.js",
   "scripts": {
-    "input:hello": "tsx src/run.js input/hello.js",
+    "input:hello": "tsx src/run.ts input/hello.js",
     "input:functiondef": "tsx src/run.js input/functiondef.js",
     "test": "echo \"Error: no test specified\" && exit 1"
   },

@@ -6,59 +6,84 @@ const globalScope: Scope = {
   console,
 };
 
-function run(node: SyntaxNode, scopes = [globalScope]): any {
+export abstract class RunResult {
+  constructor(readonly value: any = null) {}
+
+  asReturn(): RunResult {
+    return new RunResult.Return(this.value);
+  }
+}
+
+export namespace RunResult {
+  export class Expr extends RunResult {}
+  export class Return extends RunResult {}
+}
+
+function run(
+  node: SyntaxNode,
+  scopes = [globalScope],
+  context: Scope | null = null
+): RunResult {
   if (node instanceof SyntaxNode.NodeList) {
-    let lastReturn = null;
+    let lastResult = new RunResult.Expr();
 
     for (const innerNode of node.nodes) {
-      lastReturn = run(innerNode, scopes);
+      lastResult = run(innerNode, scopes, context);
+
+      if (lastResult instanceof RunResult.Return) {
+        return lastResult;
+      }
     }
 
-    return lastReturn;
+    return lastResult;
   }
 
-  if (node instanceof SyntaxNode.MethodCall) {
-    const object = findInScopes(scopes, node.identifier);
-    if (object == null) {
-      throw new Error(
-        `runtime error, "${node.identifier.name}" is not defined.`
-      );
-    }
-
-    const params = [];
-    for (let i = 0; i < node.params.length; i++) {
-      params[i] = run(node.params[i], scopes);
-    }
-
-    return object[node.methodIdentifier.name](...params);
+  if (node instanceof SyntaxNode.ReturnStatement) {
+    return run(node.expr, scopes).asReturn();
   }
 
   if (node instanceof SyntaxNode.FunctionCall) {
-    const fn = findInScopes(scopes, node.identifier);
+    const fn = run(node.ref, scopes, context).value;
+
+    if (typeof fn != "function") {
+      throw new Error("blyat, dis not a func");
+    }
 
     const params = [];
     for (let i = 0; i < node.params.length; i++) {
-      params[i] = run(node.params[i], scopes);
+      params[i] = run(node.params[i], scopes).value;
     }
 
-    return fn(...params);
+    return new RunResult.Expr(fn.call(context, ...params));
   }
 
   if (node instanceof SyntaxNode.StrLiteral) {
-    return node.value;
+    return new RunResult.Expr(node.value);
   }
 
   if (node instanceof SyntaxNode.NumbLiteral) {
-    return node.value;
+    return new RunResult.Expr(node.value);
   }
 
   if (node instanceof SyntaxNode.BinaryOperation) {
+    if (node.opr === ".") {
+      let object = run(node.leftExpr, scopes, context).value;
+
+      return run(node.rightExpr, scopes, object);
+    }
+
     if (node.opr === "+") {
       const leftValue = run(node.leftExpr, scopes);
       const rightValue = run(node.rightExpr, scopes);
 
-      return leftValue + rightValue;
+      return new RunResult.Expr(leftValue.value + rightValue.value);
     }
+  }
+
+  if (node instanceof SyntaxNode.Identifier) {
+    const found = findInScopes(scopes, context, node);
+
+    return new RunResult.Expr(found);
   }
 
   if (node instanceof SyntaxNode.FunctionDefinition) {
@@ -67,12 +92,26 @@ function run(node: SyntaxNode, scopes = [globalScope]): any {
     scope[node.identifier.name] = function () {
       const functionScope: Scope = {};
 
-      return run(node.body, [...scopes, functionScope]);
+      const result = run(node.body, [...scopes, functionScope]);
+
+      if (result instanceof RunResult.Return) {
+        return result.value;
+      }
     };
   }
+
+  return new RunResult.Expr();
 }
 
-function findInScopes(scopes: Scope[], identifier: SyntaxNode.Identifier) {
+function findInScopes(
+  scopes: Scope[],
+  context: Scope | null,
+  identifier: SyntaxNode.Identifier
+) {
+  if (context != null) {
+    return context[identifier.name] ?? null;
+  }
+
   for (let i = 0; i < scopes.length; i++) {
     const scope = scopes.at(-i - 1)!;
     if (scope[identifier.name] != null) {

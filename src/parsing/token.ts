@@ -66,7 +66,7 @@ export namespace Token {
     }
   }
 
-  export class Operator extends TokenBase {
+  export class BinaryOperator extends TokenBase {
     constructor(readonly opr: string) {
       super();
     }

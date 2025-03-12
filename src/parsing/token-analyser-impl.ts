@@ -55,11 +55,6 @@ export namespace TokenAnalyser {
     protected searchString: string = ")";
   }
 
-  export class DotAnalyser extends SimpleTokenAnalyser {
-    protected TokenConstructor: TokenConstructor = Token.Dot;
-    protected searchString: string = ".";
-  }
-
   export class SemicolonAnalyser extends SimpleTokenAnalyser {
     protected TokenConstructor: TokenConstructor = Token.Semicolon;
     protected searchString: string = ";";
@@ -71,8 +66,8 @@ export namespace TokenAnalyser {
   }
 
   export class OperatorAnalyser extends PolyTokenAnalyser {
-    protected TokenConstructor: TokenConstructor = Token.Operator;
-    protected searchStrings: string[] = ["+"];
+    protected TokenConstructor: TokenConstructor = Token.BinaryOperator;
+    protected searchStrings: string[] = ["+", "."];
   }
 
   export class StrAnalyser extends TokenAnalyserBase {

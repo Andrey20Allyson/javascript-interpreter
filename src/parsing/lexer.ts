@@ -18,7 +18,6 @@ namespace lexer {
       new TokenAnalyser.OpenParenthesesAnalyser(code),
       new TokenAnalyser.CloseParenthesesAnalyser(code),
 
-      new TokenAnalyser.DotAnalyser(code),
       new TokenAnalyser.SemicolonAnalyser(code),
       new TokenAnalyser.ColonAnalyser(code),
 
