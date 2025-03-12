@@ -91,4 +91,10 @@ export namespace SyntaxNode {
       super();
     }
   }
+
+  export class IfStatement extends SyntaxNode {
+    constructor(readonly logicExpr: SyntaxNode, readonly body: SyntaxNode) {
+      super();
+    }
+  }
 }

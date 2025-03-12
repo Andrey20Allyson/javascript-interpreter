@@ -36,48 +36,18 @@ export namespace Token {
     }
   }
 
-  export class OpenParentheses extends TokenBase {
-    constructor() {
-      super();
-    }
-  }
-
-  export class CloseParentheses extends TokenBase {
-    constructor() {
-      super();
-    }
-  }
-
-  export class Dot extends TokenBase {
-    constructor() {
-      super();
-    }
-  }
-
-  export class Semicolon extends TokenBase {
-    constructor() {
-      super();
-    }
-  }
-
-  export class Colon extends TokenBase {
-    constructor() {
-      super();
-    }
-  }
-
   export class BinaryOperator extends TokenBase {
     constructor(readonly opr: string) {
       super();
     }
   }
 
-  export class LineCommentary extends TokenBase {
-    constructor() {
-      super();
-    }
-  }
-
+  export class OpenParentheses extends TokenBase {}
+  export class CloseParentheses extends TokenBase {}
+  export class Dot extends TokenBase {}
+  export class Semicolon extends TokenBase {}
+  export class Colon extends TokenBase {}
+  export class LineCommentary extends TokenBase {}
   export class EndOfFile extends TokenBase {}
   export class OpenBraces extends TokenBase {}
   export class CloseBraces extends TokenBase {}

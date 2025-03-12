@@ -1,15 +1,12 @@
 import { SyntaxNode } from "./syntax-node";
 import { Token } from "./token";
-import { TokenConstructor } from "./token-analyser-core";
-
-export interface Range {
-  start: number;
-  end: number;
-}
-
-function Range(start = 0, end = -1): Range {
-  return { start, end };
-}
+import { parseNumber } from "./utils/number";
+import {
+  assertToken,
+  Range,
+  seekGroupRange,
+  seekParams,
+} from "./utils/token-finder";
 
 function parse(tokens: Token[], range = Range()): SyntaxNode.NodeList {
   const tree = new SyntaxNode.NodeList([]);
@@ -24,22 +21,20 @@ function parse(tokens: Token[], range = Range()): SyntaxNode.NodeList {
   }
 
   for (let i = start; i < end; i++) {
-    const expr = parseExpression(tokens, i);
+    const expression = parseExpression(tokens, i);
 
-    if (expr == null) {
+    if (expression == null) {
       continue;
     }
 
-    const { node, end: newOffset } = expr;
-
-    tree.nodes.push(node);
-    i = newOffset;
+    tree.nodes.push(expression.node);
+    i = expression.end;
   }
 
   return tree;
 }
 
-type ParseExpressionResult = {
+type ExpressionWithLastToken = {
   node: SyntaxNode;
   end: number;
 };
@@ -47,103 +42,109 @@ type ParseExpressionResult = {
 function parseExpression(
   tokens: Token[],
   offset: number
-): ParseExpressionResult | null {
-  const token = tokens[offset];
-
-  let expression: ParseExpressionResult | null = null;
-
-  do {
-    if (token instanceof Token.Keyword && token.keyword === "function") {
-      const identifierToken = assertToken(tokens, offset + 1, Token.Identifier);
-      assertToken(tokens, offset + 2, Token.OpenParentheses);
-
-      const paramsRange = seekParams(tokens, offset + 2);
-
-      assertToken(tokens, paramsRange.end, Token.OpenBraces);
-
-      const bracesRange = seekBracesRange(tokens, paramsRange.end);
-
-      const node = new SyntaxNode.FunctionDefinition(
-        new SyntaxNode.Identifier(identifierToken.name),
-        [],
-        parse(tokens, bracesRange)
-      );
-
-      expression = { end: bracesRange.end, node };
-      break;
-    }
-
-    if (token instanceof Token.Keyword && token.keyword === "return") {
-      const returnExpr = parseExpression(tokens, offset + 1);
-
-      const exprNode = returnExpr?.node ?? new SyntaxNode.NullLiteral();
-      const exprEnd = returnExpr?.end ?? offset + 1;
-
-      const node = new SyntaxNode.ReturnStatement(exprNode);
-
-      expression = { node, end: exprEnd };
-      break;
-    }
-
-    if (token instanceof Token.Identifier) {
-      const nextToken: Token | undefined = tokens[offset + 1];
-
-      const node = new SyntaxNode.Identifier(token.name);
-
-      expression = { end: offset, node };
-      break;
-    }
-
-    if (token instanceof Token.Str) {
-      const node = new SyntaxNode.StrLiteral(token.text.slice(1, -1));
-
-      expression = { end: offset, node };
-      break;
-    }
-
-    if (token instanceof Token.Numb) {
-      const num = parseNumber(token.text);
-      const node = new SyntaxNode.NumbLiteral(num);
-
-      expression = { end: offset, node };
-      break;
-    }
-  } while (false);
+): ExpressionWithLastToken | null {
+  const expression = parsePriparyExpression(tokens, offset);
 
   if (expression == null) {
     return null;
   }
 
-  const tokenNextExpression = tokens[expression.end + 1];
+  return parseOperation(tokens, offset + 1, expression);
+}
 
-  if (
-    tokenNextExpression != null &&
-    tokenNextExpression instanceof Token.BinaryOperator
-  ) {
+function parsePriparyExpression(
+  tokens: Token[],
+  offset: number
+): ExpressionWithLastToken | null {
+  const token = tokens[offset];
+
+  if (token === null) {
+    return null;
+  }
+
+  if (token instanceof Token.Keyword && token.keyword === "function") {
+    const identifierToken = assertToken(tokens, offset + 1, Token.Identifier);
+    assertToken(tokens, offset + 2, Token.OpenParentheses);
+
+    const paramsRange = seekParams(tokens, offset + 2);
+
+    assertToken(tokens, paramsRange.end, Token.OpenBraces);
+
+    const bracesRange = seekGroupRange(tokens, paramsRange.end, "braces");
+
+    const node = new SyntaxNode.FunctionDefinition(
+      new SyntaxNode.Identifier(identifierToken.name),
+      [],
+      parse(tokens, bracesRange)
+    );
+
+    return { end: bracesRange.end, node };
+  }
+
+  if (token instanceof Token.Keyword && token.keyword === "return") {
+    const returnExpr = parseExpression(tokens, offset + 1);
+
+    const exprNode = returnExpr?.node ?? new SyntaxNode.NullLiteral();
+    const exprEnd = returnExpr?.end ?? offset + 1;
+
+    const node = new SyntaxNode.ReturnStatement(exprNode);
+
+    return { node, end: exprEnd };
+  }
+
+  if (token instanceof Token.Identifier) {
+    const node = new SyntaxNode.Identifier(token.name);
+
+    return { end: offset, node };
+  }
+
+  if (token instanceof Token.Str) {
+    const node = new SyntaxNode.StrLiteral(token.text.slice(1, -1));
+
+    return { end: offset, node };
+  }
+
+  if (token instanceof Token.Numb) {
+    const num = parseNumber(token.text);
+    const node = new SyntaxNode.NumbLiteral(num);
+
+    return { end: offset, node };
+  }
+
+  return null;
+}
+
+function parseOperation(
+  tokens: Token[],
+  offset: number,
+  expression: ExpressionWithLastToken
+): ExpressionWithLastToken {
+  const token = tokens.at(offset);
+
+  if (token == null) {
+    return expression;
+  }
+
+  if (token instanceof Token.BinaryOperator) {
     const leftExpr = expression;
     const rightExpr = parseExpression(tokens, expression.end + 2);
 
     if (rightExpr === null) {
-      throw new Error(
-        `Expected a expression after '${tokenNextExpression.opr}'`
-      );
+      throw new Error(`Expected a expression after '${token.opr}'`);
     }
 
     const node = new SyntaxNode.BinaryOperation(
-      tokenNextExpression.opr,
+      token.opr,
       leftExpr.node,
       rightExpr.node
     );
 
-    expression = { node, end: rightExpr.end };
+    return { node, end: rightExpr.end };
   }
 
-  if (
-    tokenNextExpression != null &&
-    tokenNextExpression instanceof Token.OpenParentheses
-  ) {
+  if (token instanceof Token.OpenParentheses) {
     let params = [];
-    const seekParamsResult = seekParams(tokens, offset + 1);
+    const seekParamsResult = seekParams(tokens, offset);
 
     for (const range of seekParamsResult.ranges) {
       const node = parse(tokens, range);
@@ -153,14 +154,15 @@ function parseExpression(
 
     const node = new SyntaxNode.FunctionCall(expression.node, params);
 
-    offset = seekParamsResult.end - 1;
-    expression = { end: offset, node };
+    expression = {
+      node,
+      end: seekParamsResult.end - 1,
+    };
+
+    return parseOperation(tokens, expression.end + 1, expression);
   }
 
-  if (
-    tokenNextExpression != null &&
-    tokenNextExpression instanceof Token.Colon
-  ) {
+  if (token instanceof Token.Colon) {
     const node = new SyntaxNode.NodeList([expression.node]);
 
     const nextExpr = parseExpression(tokens, expression.end + 2);
@@ -175,101 +177,10 @@ function parseExpression(
       node.nodes.push(nextExpr.node);
     }
 
-    expression = { node, end: nextExpr.end };
+    return { node, end: nextExpr.end };
   }
 
   return expression;
-}
-
-function seekParams(tokens: Token[], offset: number) {
-  let opened = 1;
-  let i = offset + 1;
-  let paramStart = i;
-  const ranges = [];
-
-  while (true) {
-    const token = tokens[i++];
-
-    if (token == null) {
-      throw new Error("parsing error");
-    }
-
-    if (token instanceof Token.OpenParentheses) {
-      opened++;
-      continue;
-    }
-
-    if (token instanceof Token.CloseParentheses) {
-      opened--;
-
-      if (opened === 0) {
-        ranges.push(Range(paramStart, i - 1));
-        paramStart = i;
-        break;
-      }
-
-      continue;
-    }
-
-    if (opened === 1 && token instanceof Token.Colon) {
-      ranges.push(Range(paramStart, i - 1));
-      paramStart = i;
-      continue;
-    }
-  }
-
-  return { ranges, end: i };
-}
-
-function seekBracesRange(tokens: Token[], offset: number) {
-  const start = offset;
-  let opened = 0;
-
-  do {
-    const token = tokens[offset++];
-    if (token instanceof Token.OpenBraces) {
-      opened++;
-    }
-
-    if (token instanceof Token.CloseBraces) {
-      opened--;
-    }
-  } while (opened > 0);
-
-  return Range(start, offset - 1);
-}
-
-function parseNumber(text: string) {
-  const zeroCharCode = "0".charCodeAt(0);
-  let num = 0;
-
-  for (let i = 0; i < text.length; i++) {
-    const char = text[i];
-    const digit = char.charCodeAt(0) - zeroCharCode;
-    num += digit;
-
-    if (i < text.length - 1) {
-      num *= 10;
-    }
-  }
-
-  return num;
-}
-
-function assertToken<T extends Token>(
-  tokens: Token[],
-  index: number,
-  Constructor: TokenConstructor<T>
-): T {
-  const token = tokens[index];
-
-  if (token instanceof Constructor === false) {
-    throw new Error(
-      `Expected a ${Constructor.getType()}, but recived a ${token.type}`
-    );
-  }
-
-  return token;
 }
 
 const parser = {
