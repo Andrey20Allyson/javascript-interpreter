@@ -50,7 +50,7 @@ function parseExpression(
     return null;
   }
 
-  return parseOperation(tokens, offset + 1, expression);
+  return parseOperation(tokens, expression.end + 1, expression);
 }
 
 function parsePriparyExpression(
@@ -71,15 +71,19 @@ function parsePriparyExpression(
 
     assertToken(tokens, paramsRange.end, Token.OpenBraces);
 
-    const bracesRange = seekGroupRange(tokens, paramsRange.end, "braces");
+    const functionBlockRange = seekGroupRange(
+      tokens,
+      paramsRange.end,
+      "braces"
+    );
 
     const node = new SyntaxNode.FunctionDefinition(
       new SyntaxNode.Identifier(identifierToken.name),
       [],
-      parse(tokens.rerange(bracesRange))
+      parse(tokens.rerange(functionBlockRange))
     );
 
-    return { end: bracesRange.end, node };
+    return { end: functionBlockRange.end, node };
   }
 
   if (token instanceof Token.Keyword && token.keyword === "return") {
@@ -94,6 +98,23 @@ function parsePriparyExpression(
   }
 
   if (token instanceof Token.Keyword && token.keyword === "if") {
+    assertToken(tokens, offset + 1, Token.OpenParentheses);
+
+    const logicExpr = parseExpression(tokens, offset + 2);
+    if (logicExpr == null) {
+      throw new Error(`Expected a logic expression for '${token.type}'`);
+    }
+
+    assertToken(tokens, logicExpr.end + 1, Token.CloseParentheses);
+
+    const ifBlockRange = seekGroupRange(tokens, logicExpr.end + 2, "braces");
+
+    const node = new SyntaxNode.IfStatement(
+      logicExpr.node,
+      parse(tokens.rerange(ifBlockRange))
+    );
+
+    return { node, end: ifBlockRange.end };
   }
 
   if (token instanceof Token.Keyword && token.keyword === "let") {

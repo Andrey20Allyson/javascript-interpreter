@@ -76,6 +76,19 @@ function _run(
     return lastResult;
   }
 
+  if (node instanceof SyntaxNode.IfStatement) {
+    const logicResult = _run(node.logicExpr, scopes);
+    if (logicResult instanceof RunResult.Error) {
+      return logicResult;
+    }
+
+    if (!(logicResult.value === true)) {
+      return new RunResult.Expr();
+    }
+
+    return _run(node.body, scopes);
+  }
+
   if (node instanceof SyntaxNode.ReturnStatement) {
     const result = _run(node.expr, scopes);
     if (result instanceof RunResult.Error) {
@@ -137,6 +150,10 @@ function _run(
   }
 
   if (node instanceof SyntaxNode.BinaryOperation) {
+    if (isSimpleBinaryOpr(node.opr)) {
+      return runSimpleBinaryOpr(node, scopes);
+    }
+
     if (node.opr === ".") {
       let leftExprResult = _run(node.leftExpr, scopes, context);
       if (leftExprResult instanceof RunResult.Error) {
@@ -146,20 +163,6 @@ function _run(
       const object = leftExprResult.value;
 
       return _run(node.rightExpr, scopes, object);
-    }
-
-    if (node.opr === "+") {
-      const leftValue = _run(node.leftExpr, scopes);
-      if (leftValue instanceof RunResult.Error) {
-        return leftValue;
-      }
-
-      const rightValue = _run(node.rightExpr, scopes);
-      if (rightValue instanceof RunResult.Error) {
-        return leftValue;
-      }
-
-      return new RunResult.Expr(leftValue.value + rightValue.value);
     }
 
     if (node.opr === "=") {
@@ -205,6 +208,63 @@ function _run(
   }
 
   return new RunResult.Expr();
+}
+
+function runSimpleBinaryOpr(
+  node: SyntaxNode.BinaryOperation,
+  scopes: Scope[]
+): RunResult {
+  const leftValue = _run(node.leftExpr, scopes);
+  if (leftValue instanceof RunResult.Error) {
+    return leftValue;
+  }
+
+  const rightValue = _run(node.rightExpr, scopes);
+  if (rightValue instanceof RunResult.Error) {
+    return leftValue;
+  }
+
+  const oprResult = getBinaryOprResult(
+    node.opr,
+    leftValue.value,
+    rightValue.value
+  );
+
+  return new RunResult.Expr(oprResult);
+}
+
+function isSimpleBinaryOpr(opr: string): boolean {
+  switch (opr) {
+    case "+":
+    case "-":
+    case "==":
+    case "<":
+    case ">":
+    case "/":
+    case "*":
+      return true;
+  }
+
+  return false;
+}
+
+function getBinaryOprResult(opr: string, val1: any, val2: any): any {
+  switch (opr) {
+    case "+":
+      return val1 + val2;
+    case "-":
+      return val1 - val2;
+    case "==":
+      return val1 === val2;
+    case "<":
+      return val1 < val2;
+    case "<":
+      return val1 > val2;
+    case "/":
+      return val1 / val2;
+    case "*":
+      return val1 * val2;
+  }
 }
 
 function findInScopes(

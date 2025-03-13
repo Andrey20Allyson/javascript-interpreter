@@ -67,7 +67,7 @@ export namespace TokenAnalyser {
 
   export class OperatorAnalyser extends PolyTokenAnalyser {
     protected TokenConstructor: TokenConstructor = Token.BinaryOperator;
-    protected searchStrings: string[] = ["+", ".", "="];
+    protected searchStrings: string[] = ["==", "+", ".", "=", "<", ">"];
   }
 
   export class StrAnalyser extends TokenAnalyserBase {

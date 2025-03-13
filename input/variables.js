@@ -1,9 +1,21 @@
-let v = 1;
+let i = 0;
+let t = 10;
 
 function add() {
-  v = v + 1;
+  let iIsLower = i < t;
+  let f = 0 == 1;
+
+  if (iIsLower == f) {
+    return;
+  }
+
+  console.log("valor de i:", i);
+  
+  i = i + 1;
+
+  return add();
 }
 
 add();
 
-return v;
+return i;

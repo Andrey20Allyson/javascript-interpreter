@@ -2,7 +2,7 @@ import fs from "node:fs/promises";
 import path from "node:path";
 import lexer from "@lexical-analysis/lexer";
 import parser from "@parsing/parser";
-import runner from "@runtime/runner";
+import runner, { RunResult } from "@runtime/runner";
 import { Token } from "@lexical-analysis/token";
 import { SyntaxNode } from "@parsing/syntax-node";
 import chalk from "chalk";
@@ -26,7 +26,17 @@ function evaluate(code: string) {
   const tree = parser.parse(tokens);
   // logSyntaxTree(tree);
 
-  const result = runner.run(tree, { evaluate });
+  const result = runner.run(tree, {
+    eval(str: string) {
+      const [value, error] = evaluate(str);
+
+      if (error) {
+        return new RunResult.Error(error);
+      }
+
+      return new RunResult.Return(value);
+    },
+  });
 
   return result;
 }
