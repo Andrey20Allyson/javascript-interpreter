@@ -7,7 +7,8 @@
     "paths": {
       "@parsing/*": ["parsing/*"],
       "@runtime/*": ["runtime/*"],
-      "@utils/*": ["utils/*"]
+      "@utils/*": ["utils/*"],
+      "@lexical-analysis/*": ["lexical-analysis/*"]
     },
     "skipDefaultLibCheck": true,
     "esModuleInterop": true

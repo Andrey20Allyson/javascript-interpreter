@@ -1,9 +1,9 @@
 import fs from "node:fs/promises";
 import path from "node:path";
-import lexer from "@parsing/lexer";
+import lexer from "@lexical-analysis/lexer";
 import parser from "@parsing/parser";
 import runner from "@runtime/runner";
-import { Token } from "@parsing/token";
+import { Token } from "@lexical-analysis/token";
 import { SyntaxNode } from "@parsing/syntax-node";
 import chalk from "chalk";
 

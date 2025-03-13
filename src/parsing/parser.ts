@@ -1,5 +1,5 @@
 import { SyntaxNode } from "./syntax-node";
-import { Token } from "./token";
+import { Token } from "@lexical-analysis/token";
 import { ArrayRangeAcessor } from "@utils/array";
 import { parseNumber } from "@utils/number";
 import { parseString } from "@utils/string";

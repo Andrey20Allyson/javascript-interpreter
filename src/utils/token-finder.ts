@@ -1,5 +1,5 @@
-import { Token } from "@parsing/token";
-import { TokenConstructor } from "@parsing/token-analyser-core";
+import { Token } from "@lexical-analysis/token";
+import { TokenConstructor } from "@lexical-analysis/token-analyser-core";
 import { ArrayAcessor, Range } from "./array";
 
 export function seekParams(tokens: ArrayAcessor<Token>, offset: number) {
