@@ -6,7 +6,8 @@
     "baseUrl": "./src",
     "paths": {
       "@parsing/*": ["parsing/*"],
-      "@runtime/*": ["runtime/*"]
+      "@runtime/*": ["runtime/*"],
+      "@utils/*": ["utils/*"]
     },
     "skipDefaultLibCheck": true,
     "esModuleInterop": true

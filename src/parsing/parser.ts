@@ -1,14 +1,14 @@
 import { SyntaxNode } from "./syntax-node";
 import { Token } from "./token";
-import { ArrayRangeAcessor } from "./utils/array";
-import { parseNumber } from "./utils/number";
-import { parseString } from "./utils/string";
+import { ArrayRangeAcessor } from "@utils/array";
+import { parseNumber } from "@utils/number";
+import { parseString } from "@utils/string";
 import {
   assertToken,
   assertTokenOpt,
   seekGroupRange,
   seekParams,
-} from "./utils/token-finder";
+} from "@utils/token-finder";
 
 export class Parser {}
 

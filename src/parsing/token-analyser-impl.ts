@@ -11,7 +11,7 @@ import {
   seekNumber,
   seekString,
   seekWord,
-} from "./utils/string";
+} from "@utils/string";
 
 export namespace TokenAnalyser {
   export class LineCommentaryAnalyser extends SimpleTokenAnalyser {
