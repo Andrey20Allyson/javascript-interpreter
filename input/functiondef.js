@@ -1,10 +1,7 @@
-function a() {
-  console.log("olá mundo")
+function f() {
+  console.log("olá mundo:" + "olá mundo", "mundo");
 
   return 5 + 5
 }
 
-return a() + a();
-// function e() {}
-
-// return e() + e();
+return f() + f();

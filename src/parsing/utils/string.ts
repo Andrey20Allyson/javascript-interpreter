@@ -81,3 +81,7 @@ export function seekEndlineIndex(code: string, offset: number) {
     }
   }
 }
+
+export function parseString(text: string): string {
+  return text.slice(1, -1);
+}

@@ -3,9 +3,9 @@ import path from "node:path";
 import lexer from "@parsing/lexer";
 import parser from "@parsing/parser";
 import runner from "@runtime/runner";
-import { seekGroupRange } from "@parsing/utils/token-finder";
 import { Token } from "@parsing/token";
 import { SyntaxNode } from "@parsing/syntax-node";
+import chalk from "chalk";
 
 function logTokens(tokens: Token[]) {
   const tokensString = tokens
@@ -24,9 +24,9 @@ function evaluate(code: string) {
   // logTokens(tokens);
 
   const tree = parser.parse(tokens);
-  logSyntaxTree(tree);
+  // logSyntaxTree(tree);
 
-  const result = runner.run(tree).value;
+  const result = runner.run(tree, { evaluate });
 
   return result;
 }
@@ -38,13 +38,19 @@ async function main(args: string[]) {
   const code = await fs.readFile(entryPoint, { encoding: "utf-8" });
 
   console.time("runtime");
-  const result = evaluate(code);
+  const [value, error] = evaluate(code);
 
-  console.log(result);
-  console.log(`>> execution finished`);
+  if (error != null) {
+    console.log(`${chalk.red.underline(error.name + ":")} ${error.message}`);
+    console.log(`>> execution finished with ${chalk.red.underline("error")}`);
+  } else {
+    console.log(value);
+    console.log(
+      `>> execution finished with ${chalk.green.underline("success")}`
+    );
+  }
+
   console.timeEnd("runtime");
 }
-
-runner.globalScope.eval = evaluate;
 
 main(process.argv);

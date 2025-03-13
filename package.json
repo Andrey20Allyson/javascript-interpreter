@@ -5,6 +5,7 @@
   "scripts": {
     "input:hello": "tsx src/run.ts input/hello.js",
     "input:functiondef": "tsx src/run.js input/functiondef.js",
+    "input:variables": "tsx src/run.js input/variables.js",
     "test": "echo \"Error: no test specified\" && exit 1"
   },
   "keywords": [],
@@ -15,5 +16,8 @@
     "@types/node": "22.13.10",
     "tsx": "4.19.3",
     "typescript": "5.8.2"
+  },
+  "dependencies": {
+    "chalk": "^5.4.1"
   }
 }

@@ -1,26 +1,27 @@
 import { SyntaxNode } from "./syntax-node";
 import { Token } from "./token";
+import { ArrayRangeAcessor } from "./utils/array";
 import { parseNumber } from "./utils/number";
+import { parseString } from "./utils/string";
 import {
   assertToken,
-  Range,
+  assertTokenOpt,
   seekGroupRange,
   seekParams,
 } from "./utils/token-finder";
 
-function parse(tokens: Token[], range = Range()): SyntaxNode.NodeList {
-  const tree = new SyntaxNode.NodeList([]);
+export class Parser {}
 
-  const start = range.start;
-
-  let end = range.end;
-  if (end < 0) {
-    end = tokens.length + end + 1;
-  } else if (end > tokens.length) {
-    end = tokens.length;
+function parse(
+  tokens: Token[] | ArrayRangeAcessor<Token>
+): SyntaxNode.NodeList {
+  if (tokens instanceof Array) {
+    tokens = new ArrayRangeAcessor(tokens);
   }
 
-  for (let i = start; i < end; i++) {
+  const tree = new SyntaxNode.NodeList([]);
+
+  for (let i = tokens.range.start; i < tokens.range.end; i++) {
     const expression = parseExpression(tokens, i);
 
     if (expression == null) {
@@ -40,7 +41,7 @@ type ExpressionWithLastToken = {
 };
 
 function parseExpression(
-  tokens: Token[],
+  tokens: ArrayRangeAcessor<Token>,
   offset: number
 ): ExpressionWithLastToken | null {
   const expression = parsePriparyExpression(tokens, offset);
@@ -53,10 +54,10 @@ function parseExpression(
 }
 
 function parsePriparyExpression(
-  tokens: Token[],
+  tokens: ArrayRangeAcessor<Token>,
   offset: number
 ): ExpressionWithLastToken | null {
-  const token = tokens[offset];
+  const token = tokens.at(offset);
 
   if (token === null) {
     return null;
@@ -75,7 +76,7 @@ function parsePriparyExpression(
     const node = new SyntaxNode.FunctionDefinition(
       new SyntaxNode.Identifier(identifierToken.name),
       [],
-      parse(tokens, bracesRange)
+      parse(tokens.rerange(bracesRange))
     );
 
     return { end: bracesRange.end, node };
@@ -92,6 +93,26 @@ function parsePriparyExpression(
     return { node, end: exprEnd };
   }
 
+  if (token instanceof Token.Keyword && token.keyword === "if") {
+  }
+
+  if (token instanceof Token.Keyword && token.keyword === "let") {
+    const identifier = assertToken(tokens, offset + 1, Token.Identifier);
+
+    const expression = parseExpression(tokens, offset + 1);
+
+    if (expression == null) {
+      throw new Error(`Expected a expression after '${token.type}'`);
+    }
+
+    const node = new SyntaxNode.LetStatement(
+      new SyntaxNode.Identifier(identifier.name),
+      expression.node
+    );
+
+    return { node, end: expression.end };
+  }
+
   if (token instanceof Token.Identifier) {
     const node = new SyntaxNode.Identifier(token.name);
 
@@ -99,7 +120,8 @@ function parsePriparyExpression(
   }
 
   if (token instanceof Token.Str) {
-    const node = new SyntaxNode.StrLiteral(token.text.slice(1, -1));
+    const str = parseString(token.text);
+    const node = new SyntaxNode.StrLiteral(str);
 
     return { end: offset, node };
   }
@@ -115,7 +137,7 @@ function parsePriparyExpression(
 }
 
 function parseOperation(
-  tokens: Token[],
+  tokens: ArrayRangeAcessor<Token>,
   offset: number,
   expression: ExpressionWithLastToken
 ): ExpressionWithLastToken {
@@ -133,6 +155,10 @@ function parseOperation(
       throw new Error(`Expected a expression after '${token.opr}'`);
     }
 
+    if (token.opr === "=") {
+      leftExpr.node.as(SyntaxNode.Identifier);
+    }
+
     const node = new SyntaxNode.BinaryOperation(
       token.opr,
       leftExpr.node,
@@ -147,9 +173,13 @@ function parseOperation(
     const seekParamsResult = seekParams(tokens, offset);
 
     for (const range of seekParamsResult.ranges) {
-      const node = parse(tokens, range);
+      const expression = parseExpression(tokens.rerange(range), range.start);
 
-      params.push(node);
+      if (expression == null) {
+        continue;
+      }
+
+      params.push(expression.node);
     }
 
     const node = new SyntaxNode.FunctionCall(expression.node, params);

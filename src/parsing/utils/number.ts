@@ -1,7 +1,3 @@
-export function parseString(text: string): string {
-  throw new Error("Method not implemented.");
-}
-
 export function parseNumber(text: string): number {
   const zeroCharCode = "0".charCodeAt(0);
   let num = 0;

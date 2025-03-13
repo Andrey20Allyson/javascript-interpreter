@@ -1,23 +1,15 @@
 import { Token } from "@parsing/token";
 import { TokenConstructor } from "@parsing/token-analyser-core";
+import { ArrayAcessor, Range } from "./array";
 
-export interface Range {
-  start: number;
-  end: number;
-}
-
-export function Range(start = 0, end = -1): Range {
-  return { start, end };
-}
-
-export function seekParams(tokens: Token[], offset: number) {
+export function seekParams(tokens: ArrayAcessor<Token>, offset: number) {
   let opened = 1;
   let i = offset + 1;
   let paramStart = i;
   const ranges: Range[] = [];
 
   while (true) {
-    const token = tokens[i++];
+    const token = tokens.at(i++);
 
     if (token == null) {
       throw new Error(`parsing error ${offset} - ${i - 1}`);
@@ -32,7 +24,7 @@ export function seekParams(tokens: Token[], offset: number) {
       opened--;
 
       if (opened === 0) {
-        ranges.push(Range(paramStart, i - 1));
+        ranges.push(new Range(paramStart, i - 1));
         paramStart = i;
         break;
       }
@@ -41,7 +33,7 @@ export function seekParams(tokens: Token[], offset: number) {
     }
 
     if (opened === 1 && token instanceof Token.Colon) {
-      ranges.push(Range(paramStart, i - 1));
+      ranges.push(new Range(paramStart, i - 1));
       paramStart = i;
       continue;
     }
@@ -60,7 +52,7 @@ export const groupTypeMap: Record<
 };
 
 export function seekGroupRange(
-  tokens: Token[],
+  tokens: ArrayAcessor<Token>,
   offset: number,
   groupType: GroupType
 ): Range {
@@ -74,7 +66,7 @@ export function seekGroupRange(
   assertToken(tokens, openIndex, OpenGroupTokenConstructor);
 
   do {
-    const token = tokens[offset++];
+    const token = tokens.at(offset++);
 
     if (token instanceof OpenGroupTokenConstructor) {
       opened++;
@@ -89,20 +81,34 @@ export function seekGroupRange(
 
   assertToken(tokens, closeIndex, CloseGroupTokenConstructor);
 
-  return Range(openIndex + 1, closeIndex);
+  return new Range(openIndex + 1, closeIndex);
 }
 
 export function assertToken<T extends Token>(
-  tokens: Token[],
+  tokens: ArrayAcessor<Token>,
   index: number,
   Constructor: TokenConstructor<T>
 ): T {
-  const token = tokens[index];
+  const token = tokens.at(index);
 
   if (token instanceof Constructor === false) {
     throw new Error(
       `Expected a ${Constructor.getType()}, but recived a ${token?.type}`
     );
+  }
+
+  return token;
+}
+
+export function assertTokenOpt<T extends Token>(
+  tokens: ArrayAcessor<Token>,
+  index: number,
+  Constructor: TokenConstructor<T>
+): T | null {
+  const token = tokens.at(index);
+
+  if (token instanceof Constructor === false) {
+    return null;
   }
 
   return token;

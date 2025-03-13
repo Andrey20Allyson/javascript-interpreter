@@ -97,4 +97,10 @@ export namespace SyntaxNode {
       super();
     }
   }
+
+  export class LetStatement extends SyntaxNode {
+    constructor(readonly identifier: Identifier, readonly expr: SyntaxNode) {
+      super();
+    }
+  }
 }

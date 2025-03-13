@@ -67,7 +67,7 @@ export namespace TokenAnalyser {
 
   export class OperatorAnalyser extends PolyTokenAnalyser {
     protected TokenConstructor: TokenConstructor = Token.BinaryOperator;
-    protected searchStrings: string[] = ["+", "."];
+    protected searchStrings: string[] = ["+", ".", "="];
   }
 
   export class StrAnalyser extends TokenAnalyserBase {
@@ -98,7 +98,7 @@ export namespace TokenAnalyser {
 
   export class KeywordAnalyser extends PolyTokenAnalyser {
     protected TokenConstructor: TokenConstructor = Token.Keyword;
-    protected searchStrings: string[] = ["function", "if", "return"];
+    protected searchStrings: string[] = ["function", "if", "return", "let"];
 
     getMatch(): string | null {
       if (this.lastToken instanceof Token.Dot) {
