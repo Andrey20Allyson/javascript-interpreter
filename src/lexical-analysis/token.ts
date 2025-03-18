@@ -42,13 +42,19 @@ export namespace Token {
     }
   }
 
-  export class OpenParentheses extends TokenBase {}
-  export class CloseParentheses extends TokenBase {}
+  export abstract class OpenOfBrackets extends TokenBase {}
+  export abstract class CloseOfBrackets extends TokenBase {}
+
+  export class OpenParentheses extends OpenOfBrackets {}
+  export class CloseParentheses extends CloseOfBrackets {}
+
+  export class OpenBraces extends OpenOfBrackets {}
+  export class CloseBraces extends CloseOfBrackets {}
+
   export class Dot extends TokenBase {}
   export class Semicolon extends TokenBase {}
+  export class Comma extends TokenBase {}
   export class Colon extends TokenBase {}
   export class LineCommentary extends TokenBase {}
   export class EndOfFile extends TokenBase {}
-  export class OpenBraces extends TokenBase {}
-  export class CloseBraces extends TokenBase {}
 }

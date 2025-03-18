@@ -1,8 +1,8 @@
 import { Token } from "@lexical-analysis/token";
 import { TokenConstructor } from "@lexical-analysis/token-analyser-core";
-import { ArrayAcessor, Range } from "./array";
+import { ArrayAccessor, Range } from "./array";
 
-export function seekParams(tokens: ArrayAcessor<Token>, offset: number) {
+export function seekParams(tokens: ArrayAccessor<Token>, offset: number) {
   let opened = 1;
   let i = offset + 1;
   let paramStart = i;
@@ -32,7 +32,7 @@ export function seekParams(tokens: ArrayAcessor<Token>, offset: number) {
       continue;
     }
 
-    if (opened === 1 && token instanceof Token.Colon) {
+    if (opened === 1 && token instanceof Token.Comma) {
       ranges.push(new Range(paramStart, i - 1));
       paramStart = i;
       continue;
@@ -52,7 +52,7 @@ export const groupTypeMap: Record<
 };
 
 export function seekGroupRange(
-  tokens: ArrayAcessor<Token>,
+  tokens: ArrayAccessor<Token>,
   offset: number,
   groupType: GroupType
 ): Range {
@@ -85,7 +85,7 @@ export function seekGroupRange(
 }
 
 export function assertToken<T extends Token>(
-  tokens: ArrayAcessor<Token>,
+  tokens: ArrayAccessor<Token>,
   index: number,
   Constructor: TokenConstructor<T>
 ): T {
@@ -101,7 +101,7 @@ export function assertToken<T extends Token>(
 }
 
 export function assertTokenOpt<T extends Token>(
-  tokens: ArrayAcessor<Token>,
+  tokens: ArrayAccessor<Token>,
   index: number,
   Constructor: TokenConstructor<T>
 ): T | null {

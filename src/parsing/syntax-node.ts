@@ -103,4 +103,16 @@ export namespace SyntaxNode {
       super();
     }
   }
+
+  export class ObjectLiteralProperty extends SyntaxNode {
+    constructor(readonly identifier: Identifier, readonly expr: SyntaxNode) {
+      super();
+    }
+  }
+
+  export class ObjectLiteral extends SyntaxNode {
+    constructor(readonly properties: ObjectLiteralProperty[]) {
+      super();
+    }
+  }
 }

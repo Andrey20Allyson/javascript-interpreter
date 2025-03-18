@@ -20,6 +20,7 @@ namespace lexer {
 
       new TokenAnalyser.SemicolonAnalyser(code),
       new TokenAnalyser.ColonAnalyser(code),
+      new TokenAnalyser.CommaAnalyser(code),
 
       new TokenAnalyser.OperatorAnalyser(code),
 

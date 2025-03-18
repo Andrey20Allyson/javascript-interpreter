@@ -1,22 +1,103 @@
-import { SyntaxNode } from "./syntax-node";
 import { Token } from "@lexical-analysis/token";
-import { ArrayRangeAcessor } from "@utils/array";
+import { ArrayRangeAccessor } from "@utils/array";
 import { parseNumber } from "@utils/number";
 import { parseString } from "@utils/string";
+import { assertToken, seekGroupRange, seekParams } from "@utils/token-finder";
 import {
-  assertToken,
-  assertTokenOpt,
-  seekGroupRange,
-  seekParams,
-} from "@utils/token-finder";
+  Expression,
+  ExpressionParser,
+  OperationParser,
+  ParseContext,
+  PrimaryExpressionParser,
+} from "./parser-core";
+import { SyntaxNode } from "./syntax-node";
 
-export class Parser {}
+export class Parser {
+  private _operationsParsers: OperationParser[] = [];
+  private _primaryExpressionsParsers: PrimaryExpressionParser[] = [];
+
+  constructor() {}
+
+  parse(context: ParseContext): SyntaxNode {
+    const tokens = context.tokens;
+    const tree = new SyntaxNode.NodeList([]);
+
+    for (let i = tokens.range.start; i < tokens.range.end; i++) {
+      const expression = this.parseExpression(context.pointedTo(i));
+
+      if (expression == null) {
+        continue;
+      }
+
+      tree.nodes.push(expression.node);
+      i = expression.lastTokenIndex;
+    }
+
+    return tree;
+  }
+
+  parseExpression(context: ParseContext) {
+    const expression = this.parsePrimaryExpression(context);
+
+    if (expression == null) {
+      return null;
+    }
+
+    return this.parseOperation(
+      context
+        .pointedTo(expression.lastTokenIndex + 1)
+        .precededByExpression(expression)
+    );
+  }
+
+  parsePrimaryExpression(context: ParseContext): Expression | null {
+    let parser = this._primaryExpressionsParsers.find((parser) =>
+      parser.canParse(context)
+    );
+
+    if (parser == null) {
+      return null;
+    }
+
+    return parser.parse(context);
+  }
+
+  parseOperation(context: ParseContext): Expression {
+    let parser = this._operationsParsers.find((parser) =>
+      parser.canParse(context)
+    );
+
+    if (parser == null) {
+      return context.previousExpression!;
+    }
+
+    return parser.parse(context);
+  }
+
+  plug(...parsers: ExpressionParser[]) {
+    for (const parser of parsers) {
+      this._plugSingle(parser);
+    }
+  }
+
+  private _plugSingle(parser: ExpressionParser) {
+    parser.parser = this;
+
+    if (parser instanceof PrimaryExpressionParser) {
+      this._primaryExpressionsParsers.push(parser);
+    }
+
+    if (parser instanceof OperationParser) {
+      this._operationsParsers.push(parser);
+    }
+  }
+}
 
 function parse(
-  tokens: Token[] | ArrayRangeAcessor<Token>
+  tokens: Token[] | ArrayRangeAccessor<Token>
 ): SyntaxNode.NodeList {
   if (tokens instanceof Array) {
-    tokens = new ArrayRangeAcessor(tokens);
+    tokens = new ArrayRangeAccessor(tokens);
   }
 
   const tree = new SyntaxNode.NodeList([]);
@@ -29,34 +110,29 @@ function parse(
     }
 
     tree.nodes.push(expression.node);
-    i = expression.end;
+    i = expression.lastTokenIndex;
   }
 
   return tree;
 }
 
-type ExpressionWithLastToken = {
-  node: SyntaxNode;
-  end: number;
-};
-
 function parseExpression(
-  tokens: ArrayRangeAcessor<Token>,
+  tokens: ArrayRangeAccessor<Token>,
   offset: number
-): ExpressionWithLastToken | null {
+): Expression | null {
   const expression = parsePriparyExpression(tokens, offset);
 
   if (expression == null) {
     return null;
   }
 
-  return parseOperation(tokens, expression.end + 1, expression);
+  return parseOperation(tokens, expression.lastTokenIndex + 1, expression);
 }
 
 function parsePriparyExpression(
-  tokens: ArrayRangeAcessor<Token>,
+  tokens: ArrayRangeAccessor<Token>,
   offset: number
-): ExpressionWithLastToken | null {
+): Expression | null {
   const token = tokens.at(offset);
 
   if (token === null) {
@@ -83,18 +159,18 @@ function parsePriparyExpression(
       parse(tokens.rerange(functionBlockRange))
     );
 
-    return { end: functionBlockRange.end, node };
+    return { lastTokenIndex: functionBlockRange.end, node };
   }
 
   if (token instanceof Token.Keyword && token.keyword === "return") {
     const returnExpr = parseExpression(tokens, offset + 1);
 
     const exprNode = returnExpr?.node ?? new SyntaxNode.NullLiteral();
-    const exprEnd = returnExpr?.end ?? offset + 1;
+    const exprEnd = returnExpr?.lastTokenIndex ?? offset + 1;
 
     const node = new SyntaxNode.ReturnStatement(exprNode);
 
-    return { node, end: exprEnd };
+    return { node, lastTokenIndex: exprEnd };
   }
 
   if (token instanceof Token.Keyword && token.keyword === "if") {
@@ -105,16 +181,20 @@ function parsePriparyExpression(
       throw new Error(`Expected a logic expression for '${token.type}'`);
     }
 
-    assertToken(tokens, logicExpr.end + 1, Token.CloseParentheses);
+    assertToken(tokens, logicExpr.lastTokenIndex + 1, Token.CloseParentheses);
 
-    const ifBlockRange = seekGroupRange(tokens, logicExpr.end + 2, "braces");
+    const ifBlockRange = seekGroupRange(
+      tokens,
+      logicExpr.lastTokenIndex + 2,
+      "braces"
+    );
 
     const node = new SyntaxNode.IfStatement(
       logicExpr.node,
       parse(tokens.rerange(ifBlockRange))
     );
 
-    return { node, end: ifBlockRange.end };
+    return { node, lastTokenIndex: ifBlockRange.end };
   }
 
   if (token instanceof Token.Keyword && token.keyword === "let") {
@@ -131,37 +211,37 @@ function parsePriparyExpression(
       expression.node
     );
 
-    return { node, end: expression.end };
+    return { node, lastTokenIndex: expression.lastTokenIndex };
   }
 
   if (token instanceof Token.Identifier) {
     const node = new SyntaxNode.Identifier(token.name);
 
-    return { end: offset, node };
+    return { lastTokenIndex: offset, node };
   }
 
   if (token instanceof Token.Str) {
     const str = parseString(token.text);
     const node = new SyntaxNode.StrLiteral(str);
 
-    return { end: offset, node };
+    return { lastTokenIndex: offset, node };
   }
 
   if (token instanceof Token.Numb) {
     const num = parseNumber(token.text);
     const node = new SyntaxNode.NumbLiteral(num);
 
-    return { end: offset, node };
+    return { lastTokenIndex: offset, node };
   }
 
   return null;
 }
 
 function parseOperation(
-  tokens: ArrayRangeAcessor<Token>,
+  tokens: ArrayRangeAccessor<Token>,
   offset: number,
-  expression: ExpressionWithLastToken
-): ExpressionWithLastToken {
+  expression: Expression
+): Expression {
   const token = tokens.at(offset);
 
   if (token == null) {
@@ -170,7 +250,7 @@ function parseOperation(
 
   if (token instanceof Token.BinaryOperator) {
     const leftExpr = expression;
-    const rightExpr = parseExpression(tokens, expression.end + 2);
+    const rightExpr = parseExpression(tokens, expression.lastTokenIndex + 2);
 
     if (rightExpr === null) {
       throw new Error(`Expected a expression after '${token.opr}'`);
@@ -186,7 +266,7 @@ function parseOperation(
       rightExpr.node
     );
 
-    return { node, end: rightExpr.end };
+    return { node, lastTokenIndex: rightExpr.lastTokenIndex };
   }
 
   if (token instanceof Token.OpenParentheses) {
@@ -207,16 +287,16 @@ function parseOperation(
 
     expression = {
       node,
-      end: seekParamsResult.end - 1,
+      lastTokenIndex: seekParamsResult.end - 1,
     };
 
-    return parseOperation(tokens, expression.end + 1, expression);
+    return parseOperation(tokens, expression.lastTokenIndex + 1, expression);
   }
 
-  if (token instanceof Token.Colon) {
+  if (token instanceof Token.Comma) {
     const node = new SyntaxNode.NodeList([expression.node]);
 
-    const nextExpr = parseExpression(tokens, expression.end + 2);
+    const nextExpr = parseExpression(tokens, expression.lastTokenIndex + 2);
 
     if (nextExpr == null) {
       throw new Error("Expected a expression");
@@ -228,15 +308,8 @@ function parseOperation(
       node.nodes.push(nextExpr.node);
     }
 
-    return { node, end: nextExpr.end };
+    return { node, lastTokenIndex: nextExpr.lastTokenIndex };
   }
 
   return expression;
 }
-
-const parser = {
-  SyntaxNode,
-  parse,
-};
-
-export default parser;

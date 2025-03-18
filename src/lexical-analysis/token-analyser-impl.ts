@@ -61,7 +61,12 @@ export namespace TokenAnalyser {
   }
 
   export class ColonAnalyser extends SimpleTokenAnalyser {
-    protected TokenConstructor: TokenConstructor = Token.Colon;
+    protected TokenConstructor: TokenConstructor = Token.Semicolon;
+    protected searchString: string = ":";
+  }
+
+  export class CommaAnalyser extends SimpleTokenAnalyser {
+    protected TokenConstructor: TokenConstructor = Token.Comma;
     protected searchString: string = ",";
   }
 
